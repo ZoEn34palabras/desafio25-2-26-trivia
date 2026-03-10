@@ -17,7 +17,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,9 +47,7 @@ class TriviaAppActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             AppkotlinTheme {
-
-                val viewModel : QuizViewModel = viewModel()
-
+                val viewModel: QuizViewModel = viewModel()
                 val state = viewModel.uiState.collectAsStateWithLifecycle().value
 
                 Scaffold(
@@ -51,7 +60,7 @@ class TriviaAppActivity : ComponentActivity() {
                                 )
                             },
                             navigationIcon = {
-                                IconButton( onClick = { finish() }) {
+                                IconButton(onClick = { finish() }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Default.ArrowBack,
                                         contentDescription = "Volver",
@@ -63,21 +72,19 @@ class TriviaAppActivity : ComponentActivity() {
                                 containerColor = Color(0xFF1E88E5)
                             )
                         )
-                    },
+                    }
                 ) { innerPadding ->
                     Box(
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize()
                     ) {
-                        if(state.isFinished) {
-                            // Vista FinishedScreen
+                        if (state.isFinished) {
                             FinishedScreen(
                                 score = state.score,
                                 total = state.questions.size * 100
                             )
                         } else {
-                            // Vista/Pantalla QuestionScreen
                             QuestionScreen(
                                 state = state,
                                 onSelectedOption = viewModel::onSelectedOption,
@@ -93,13 +100,17 @@ class TriviaAppActivity : ComponentActivity() {
 
 @Composable
 fun QuestionScreen(
-    state : QuizUiState,
+    state: QuizUiState,
     onSelectedOption: (Int) -> Unit,
     onConfirm: () -> Unit,
 ) {
-
-    // Tomare la pregunta actual desde el estado (derivado)
     val q = state.currentQuestion ?: return
+
+    val buttonText = if (state.showFeedback && state.isLastQuestion) {
+        "Ver resultados"
+    } else {
+        "Confirmar"
+    }
 
     Column(
         modifier = Modifier
@@ -107,33 +118,40 @@ fun QuestionScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Pregunta 1 de N
         Text(
             text = "Pregunta ${state.currentIndex + 1} de ${state.questions.size}",
             style = MaterialTheme.typography.titleMedium
         )
+
         Text(
             text = q.title,
             style = MaterialTheme.typography.headlineSmall
         )
 
-        q.options.forEachIndexed{ index, option ->
+        q.options.forEachIndexed { index, option ->
             val isSelected = state.selectedIndex == index
 
             ElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onSelectedOption(index) } ,
+                    .clickable(enabled = !state.showFeedback) {
+                        onSelectedOption(index)
+                    },
                 elevation = CardDefaults.elevatedCardElevation(
                     defaultElevation = if (isSelected) 14.dp else 1.dp
                 )
             ) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(8.dp)
                 ) {
                     RadioButton(
                         selected = isSelected,
-                        onClick = { onSelectedOption(index) }
+                        onClick = {
+                            if (!state.showFeedback) {
+                                onSelectedOption(index)
+                            }
+                        }
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
@@ -144,13 +162,20 @@ fun QuestionScreen(
             }
         }
 
+        if (state.showFeedback) {
+            Text(
+                text = if (state.isAnswerCorrect == true) "✅ Correcto" else "❌ Incorrecto",
+                style = MaterialTheme.typography.titleMedium,
+                color = if (state.isAnswerCorrect == true) Color(0xFF2E7D32) else Color(0xFFC62828)
+            )
+        }
+
         Button(
             onClick = onConfirm,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Confirmar")
+            Text(buttonText)
         }
-
     }
 }
 
@@ -177,11 +202,5 @@ fun FinishedScreen(
             text = "Tu puntaje: $score / $total",
             style = MaterialTheme.typography.titleLarge
         )
-
-        Spacer(modifier = Modifier.height(64.dp))
-
-        Button(onClick = {} ) {
-            Text("Reintentar Quiz")
-        }
     }
 }
